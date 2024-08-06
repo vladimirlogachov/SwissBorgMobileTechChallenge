@@ -22,7 +22,6 @@ class FetchTradingPairsTest {
     @Test
     fun `called with default symbols`() = runTest {
         useCase()
-
         verifySuspend(mode = VerifyMode.exactly(n = 1)) {
             repository.fetchTradingPairs(symbols = FetchTradingPairs.DEFAULT_SYMBOLS)
         }
@@ -31,9 +30,7 @@ class FetchTradingPairsTest {
     @Test
     fun `called with given symbols`() = runTest {
         val symbols = listOf(Symbol(key = "tBTCUSD"))
-
         useCase(symbols = symbols)
-
         verifySuspend(mode = VerifyMode.exactly(n = 1)) {
             repository.fetchTradingPairs(symbols = symbols)
         }
