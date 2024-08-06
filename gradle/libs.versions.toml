@@ -1,20 +1,35 @@
 [versions]
 agp = "8.5.1"
 kotlin = "2.0.0"
+kotlin-coroutines = "1.8.1"
+turbine = "1.1.0"
+mokkery = "2.1.1"
 compose = "1.6.11"
 ktor = "3.0.0-beta-2"
 koin = "3.6.0-Beta5"
 koin-compose = "1.2.0-Beta5"
-activity-compose = "1.9.1"
+androidx-lifecycle = "2.8.0"
+androidx-activity-compose = "1.9.1"
+bignum = "0.3.10"
+bignum-serialization-kotlinx = "0.3.2"
 
 [libraries]
-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-corutiens-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines" }
+
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
+androidx-lifecycle-runtime = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime", version.ref = "androidx-lifecycle" }
+
+bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
+bignum-serialization-kotlinx = { module = "com.ionspin.kotlin:bignum-serialization-kotlinx", version.ref = "bignum-serialization-kotlinx" }
 
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin-compose" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin-compose" }
 koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -24,10 +39,37 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
+[bundles]
+bignum = [
+    "bignum",
+    "bignum-serialization-kotlinx"
+]
+koin-compose = [
+    "koin-compose",
+    "koin-compose-viewmodel"
+]
+ktor-data = [
+    "ktor-serialization",
+    "ktor-client-logging",
+    "ktor-client-core",
+    "ktor-client-json",
+    "ktor-client-content-negotiation"
+]
+test = [
+    "turbine",
+    "koin-test",
+    "kotlin-test",
+    "kotlin-corutiens-test"
+]
+
 [plugins]
+mokkery = { id = "dev.mokkery", version.ref = "mokkery" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
