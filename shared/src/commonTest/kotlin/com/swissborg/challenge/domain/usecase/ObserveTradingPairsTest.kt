@@ -37,7 +37,6 @@ class ObserveTradingPairsTest {
     @Test
     fun `returns flow of trading pairs with updated value`() = runTest {
         val expected = listOf(TestTradingPair)
-
         useCase().test {
             skipItems(count = 1)
             testFlow.update { expected }
