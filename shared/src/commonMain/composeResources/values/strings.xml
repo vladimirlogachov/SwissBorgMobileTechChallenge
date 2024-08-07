@@ -1,0 +1,7 @@
+<resources>
+    <string name="header_item_name">Name</string>
+    <string name="header_item_last_price">Last Price</string>
+    <string name="header_item_daily_change">24h chg%</string>
+    <string name="search_bar_action_search">Search</string>
+    <string name="search_bar_action_clear">Clear</string>
+</resources>

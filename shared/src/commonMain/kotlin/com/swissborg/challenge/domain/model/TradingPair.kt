@@ -3,7 +3,7 @@ package com.swissborg.challenge.domain.model
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 
 internal data class TradingPair(
-    val symbol: String,
+    val symbol: Symbol,
     val bid: BigDecimal,
     val bidSize: BigDecimal,
     val ask: BigDecimal,

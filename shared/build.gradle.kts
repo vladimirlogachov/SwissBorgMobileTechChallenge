@@ -45,6 +45,9 @@ kotlin {
             implementation(libs.bundles.test)
             implementation(libs.ktor.client.mock)
         }
+        iosMain.dependencies {
+            api(libs.ktor.client.darwin)
+        }
     }
 }
 

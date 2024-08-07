@@ -1,11 +1,17 @@
 import SwiftUI
 import shared
 
-struct ContentView: View {
-	let greet = Greeting().greet()
+struct ComposeView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainViewControllerKt.MainViewController()
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
 
+struct ContentView: View {
 	var body: some View {
-		Text(greet)
+        ComposeView().ignoresSafeArea()
 	}
 }
 

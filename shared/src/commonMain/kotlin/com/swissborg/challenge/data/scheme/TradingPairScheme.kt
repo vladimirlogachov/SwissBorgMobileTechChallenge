@@ -2,6 +2,7 @@ package com.swissborg.challenge.data.scheme
 
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.swissborg.challenge.data.serializer.TradingPairSchemeSerializer
+import com.swissborg.challenge.domain.model.Symbol
 import com.swissborg.challenge.domain.model.TradingPair
 import kotlinx.serialization.Serializable
 
@@ -22,7 +23,7 @@ data class TradingPairScheme(
 
 internal fun TradingPairScheme.toDomain(): TradingPair =
     TradingPair(
-        symbol = symbol,
+        symbol = Symbol(key = symbol),
         bid = bid.toBigDecimal(),
         bidSize = bidSize.toBigDecimal(),
         ask = ask.toBigDecimal(),

@@ -1,6 +1,5 @@
 package com.swissborg.challenge.util
 
-import androidx.compose.runtime.key
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import com.swissborg.challenge.data.scheme.TradingPairScheme
 import com.swissborg.challenge.domain.model.Symbol
@@ -13,9 +12,11 @@ internal val TestTradingPairJson = """
 internal val TestTradingPairsJson =
     "[$TestTradingPairJson]"
 
+internal val TestSymbol = Symbol(key = "tBTCUSD")
+
 internal val TestTradingPairScheme =
     TradingPairScheme(
-        symbol = "tBTCUSD",
+        symbol = TestSymbol.key,
         bid = "1",
         bidSize = "1",
         ask = "1",
@@ -30,7 +31,7 @@ internal val TestTradingPairScheme =
 
 internal val TestTradingPair =
     TradingPair(
-        symbol = "tBTCUSD",
+        symbol = TestSymbol,
         bid = 1f.toBigDecimal(),
         bidSize = 1f.toBigDecimal(),
         ask = 1f.toBigDecimal(),
@@ -42,5 +43,3 @@ internal val TestTradingPair =
         high = 1f.toBigDecimal(),
         low = 1f.toBigDecimal(),
     )
-
-internal val TestSymbol = Symbol(key = "tBTCUSD")
