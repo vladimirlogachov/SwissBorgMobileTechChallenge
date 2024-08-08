@@ -2,6 +2,7 @@ package com.swissborg.challenge.di
 
 import com.swissborg.challenge.data.repository.RemoteTickersRepository
 import com.swissborg.challenge.domain.repository.TickersRepository
+import dev.jordond.connectivity.Connectivity
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -14,6 +15,7 @@ import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 
 internal val DataModule = module {
+    single { Connectivity { autoStart = true } }
     single {
         HttpClient {
             expectSuccess = true

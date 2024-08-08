@@ -5,4 +5,5 @@
     <string name="search_bar_hint">Filter</string>
     <string name="search_bar_action_filter">Filter</string>
     <string name="search_bar_action_clear">Clear</string>
+    <string name="connection_lost">Oops, connection lost!</string>
 </resources>

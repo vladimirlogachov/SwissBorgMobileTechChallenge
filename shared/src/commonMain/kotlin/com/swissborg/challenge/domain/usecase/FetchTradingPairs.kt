@@ -5,8 +5,9 @@ import com.swissborg.challenge.domain.repository.TickersRepository
 
 internal class FetchTradingPairs(private val repository: TickersRepository) {
 
-    suspend operator fun invoke(symbols: List<Symbol> = DEFAULT_SYMBOLS) =
+    suspend operator fun invoke(symbols: List<Symbol> = DEFAULT_SYMBOLS) = runCatching {
         repository.fetchTradingPairs(symbols = symbols)
+    }
 
     companion object {
 

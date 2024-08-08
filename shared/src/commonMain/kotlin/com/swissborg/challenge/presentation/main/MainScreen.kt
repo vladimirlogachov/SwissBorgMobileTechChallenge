@@ -9,28 +9,38 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,12 +61,14 @@ import androidx.lifecycle.LifecycleOwner
 import com.swissborg.challenge.domain.formatter.dailyChangeFormat
 import com.swissborg.challenge.domain.formatter.format
 import com.swissborg.challenge.domain.formatter.lastPriceFormat
+import com.swissborg.challenge.domain.model.ConnectionState
 import com.swissborg.challenge.domain.model.TradingPair
 import com.swissborg.challenge.presentation.theme.DarkGreen
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import swissborgmobiletechchallenge.shared.generated.resources.Res
+import swissborgmobiletechchallenge.shared.generated.resources.connection_lost
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_daily_change
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_last_price
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_name
@@ -66,9 +78,50 @@ import swissborgmobiletechchallenge.shared.generated.resources.search_bar_hint
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-internal fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
-    val tradingPairs by viewModel.tradingPairs.collectAsState(initial = emptyList())
+internal fun MainScreen(
+    viewModel: MainViewModel = koinViewModel(),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    val state by viewModel.state.collectAsState()
+    var showProgress by remember { mutableStateOf(value = false) }
 
+    ScreenContent(
+        onFilter = { query ->
+            MainIntent.FilterTradingPairs(query = query)
+                .run(viewModel::submitIntent)
+        },
+        state = state,
+        showProgress = showProgress,
+        snackbarHostState = snackbarHostState,
+    )
+
+    LaunchedEffect(key1 = viewModel) {
+        viewModel.action.collect { action ->
+            when (action) {
+                MainAction.ShowProgress -> showProgress = true
+                MainAction.HideProgress -> showProgress = false
+                is MainAction.ShowError -> snackbarHostState.showSnackbar(message = action.message)
+            }
+        }
+    }
+
+    RefreshDisposableEffect(
+        onStartRefresh = {
+            viewModel.submitIntent(intent = MainIntent.StartPeriodicRefresh)
+        },
+        onStopRefresh = {
+            viewModel.submitIntent(intent = MainIntent.StopPeriodicRefresh)
+        },
+    )
+}
+
+@Composable
+private fun ScreenContent(
+    onFilter: (String) -> Unit,
+    state: MainState,
+    showProgress: Boolean,
+    snackbarHostState: SnackbarHostState,
+) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -76,27 +129,55 @@ internal fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                onFilter = { query ->
-                    viewModel.intents.trySend(element = MainIntent.FilterTradingPairs(query = query))
-                },
+                onFilter = onFilter,
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .imePadding(),
+                hostState = snackbarHostState,
             )
         },
         contentWindowInsets = WindowInsets.ime,
     ) { paddingValues ->
-        TradingPairsList(
-            modifier = Modifier.padding(paddingValues = paddingValues),
-            tradingPairs = tradingPairs,
-        )
+        Column(modifier = Modifier.padding(paddingValues = paddingValues)) {
+            AnimatedVisibility(visible = state.connectionState is ConnectionState.Disconnected) {
+                ConnectionLost(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            TradingPairsList(
+                modifier = Modifier.weight(weight = 1f),
+                showProgress = showProgress,
+                tradingPairs = state.tradingPairs,
+            )
+        }
     }
+}
 
-    RefreshDisposableEffect(
-        onStartRefresh = {
-            viewModel.intents.trySend(element = MainIntent.StartPeriodicRefresh)
-        },
-        onStopRefresh = {
-            viewModel.intents.trySend(element = MainIntent.StopPeriodicRefresh)
-        },
-    )
+@Composable
+private fun ConnectionLost(modifier: Modifier = Modifier) = Surface(
+    modifier = modifier.height(intrinsicSize = IntrinsicSize.Min),
+    color = MaterialTheme.colorScheme.errorContainer,
+    shape = MaterialTheme.shapes.medium,
+) {
+    Row(
+        modifier = Modifier
+            .padding(all = 16.dp)
+            .fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(space = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.WifiOff,
+            contentDescription = stringResource(resource = Res.string.connection_lost),
+        )
+        Text(text = stringResource(resource = Res.string.connection_lost))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -147,6 +228,7 @@ private fun FilterBar(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TradingPairsList(
+    showProgress: Boolean,
     tradingPairs: List<TradingPair>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
@@ -157,7 +239,16 @@ private fun TradingPairsList(
     verticalArrangement = verticalArrangement,
 ) {
     stickyHeader {
-        Header(modifier = Modifier.fillMaxWidth())
+        Box(contentAlignment = Alignment.BottomCenter) {
+            Header(modifier = Modifier.fillMaxWidth())
+            if (showProgress) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(height = 1.dp)
+                )
+            }
+        }
     }
     items(items = tradingPairs, key = { item -> item.symbol.key }) { tradingPair ->
         TradingPairListItem(tradingPair = tradingPair)

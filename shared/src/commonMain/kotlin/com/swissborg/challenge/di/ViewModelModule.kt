@@ -8,6 +8,7 @@ internal val ViewModelModule = module {
     viewModel {
         MainViewModel(
             observeTradingPairs = get(),
+            observeConnectionState = get(),
             fetchTradingPairs = get(),
             applyTradingPairsFilter = get(),
         )
