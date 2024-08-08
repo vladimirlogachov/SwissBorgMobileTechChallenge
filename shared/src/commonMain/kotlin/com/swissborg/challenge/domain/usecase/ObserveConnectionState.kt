@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.map
 internal class ObserveConnectionState(private val connectivity: Connectivity) {
 
     operator fun invoke() =
-        connectivity.statusUpdates.map { state ->
-            when (state) {
+        connectivity.statusUpdates.map { status ->
+            when (status) {
                 is Connectivity.Status.Connected -> ConnectionState.Connected
                 Connectivity.Status.Disconnected -> ConnectionState.Disconnected
             }

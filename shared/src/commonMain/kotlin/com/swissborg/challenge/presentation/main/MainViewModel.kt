@@ -34,13 +34,13 @@ internal class MainViewModel(
     val action = _action.receiveAsFlow()
     val state = combine(_tradingPairs, _connectionState) { tradingPairs, connectionState ->
         when (connectionState) {
-            is ConnectionState.Connected -> startPeriodicRefresh()
+            ConnectionState.Connected -> startPeriodicRefresh()
             ConnectionState.Disconnected -> stopPeriodicRefresh()
         }
         MainState(tradingPairs = tradingPairs, connectionState = connectionState)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        started = SharingStarted.WhileSubscribed(),
         initialValue = MainState(),
     )
 

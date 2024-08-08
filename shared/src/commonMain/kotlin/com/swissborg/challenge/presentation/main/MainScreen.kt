@@ -3,7 +3,6 @@ package com.swissborg.challenge.presentation.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -49,11 +48,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -87,8 +90,7 @@ internal fun MainScreen(
 
     ScreenContent(
         onFilter = { query ->
-            MainIntent.FilterTradingPairs(query = query)
-                .run(viewModel::submitIntent)
+            MainIntent.FilterTradingPairs(query = query).run(viewModel::submitIntent)
         },
         state = state,
         showProgress = showProgress,
@@ -106,12 +108,8 @@ internal fun MainScreen(
     }
 
     RefreshDisposableEffect(
-        onStartRefresh = {
-            viewModel.submitIntent(intent = MainIntent.StartPeriodicRefresh)
-        },
-        onStopRefresh = {
-            viewModel.submitIntent(intent = MainIntent.StopPeriodicRefresh)
-        },
+        onStartRefresh = { MainIntent.StartPeriodicRefresh.run(viewModel::submitIntent) },
+        onStopRefresh = { MainIntent.StopPeriodicRefresh.run(viewModel::submitIntent) },
     )
 }
 
@@ -150,9 +148,18 @@ private fun ScreenContent(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
+            Box(contentAlignment = Alignment.BottomCenter) {
+                Header(modifier = Modifier.fillMaxWidth())
+                if (showProgress) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(height = 1.dp)
+                    )
+                }
+            }
             TradingPairsList(
                 modifier = Modifier.weight(weight = 1f),
-                showProgress = showProgress,
                 tradingPairs = state.tradingPairs,
             )
         }
@@ -186,17 +193,15 @@ private fun FilterBar(
     onFilter: (String) -> Unit,
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    focusManager: FocusManager = LocalFocusManager.current,
     softwareKeyboardController: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current,
 ) {
     var query by rememberSaveable { mutableStateOf(value = "") }
     SearchBar(
         modifier = modifier,
         query = query,
-        onQueryChange = { q -> query = q; },
-        onSearch = {
-            softwareKeyboardController?.hide()
-            onFilter(query)
-        },
+        onQueryChange = { q -> query = q; onFilter(query) },
+        onSearch = { softwareKeyboardController?.hide(); focusManager.clearFocus() },
         active = false,
         onActiveChange = { /* no need to expand the bar */ },
         placeholder = { Text(text = stringResource(resource = Res.string.search_bar_hint)) },
@@ -225,43 +230,13 @@ private fun FilterBar(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TradingPairsList(
-    showProgress: Boolean,
-    tradingPairs: List<TradingPair>,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(all = 16.dp),
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(space = 8.dp),
-) = LazyColumn(
-    modifier = modifier,
-    contentPadding = contentPadding,
-    verticalArrangement = verticalArrangement,
-) {
-    stickyHeader {
-        Box(contentAlignment = Alignment.BottomCenter) {
-            Header(modifier = Modifier.fillMaxWidth())
-            if (showProgress) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height = 1.dp)
-                )
-            }
-        }
-    }
-    items(items = tradingPairs, key = { item -> item.symbol.key }) { tradingPair ->
-        TradingPairListItem(tradingPair = tradingPair)
-    }
-}
-
 @Composable
 private fun Header(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(vertical = 4.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(space = 16.dp),
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
-) = ProvideTextStyle(value = MaterialTheme.typography.labelLarge) {
+) = ProvideTextStyle(value = MaterialTheme.typography.labelMedium) {
     Row(
         modifier = modifier
             .background(color = MaterialTheme.colorScheme.surface)
@@ -291,6 +266,22 @@ private fun Header(
 }
 
 @Composable
+private fun TradingPairsList(
+    tradingPairs: List<TradingPair>,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(space = 8.dp),
+) = LazyColumn(
+    modifier = modifier,
+    contentPadding = contentPadding,
+    verticalArrangement = verticalArrangement,
+) {
+    items(items = tradingPairs, key = { item -> item.symbol.key }) { tradingPair ->
+        TradingPairListItem(tradingPair = tradingPair)
+    }
+}
+
+@Composable
 private fun TradingPairListItem(
     tradingPair: TradingPair,
     modifier: Modifier = Modifier,
@@ -305,7 +296,14 @@ private fun TradingPairListItem(
     Box(modifier = Modifier.weight(weight = 2f)) {
         Text(
             modifier = Modifier.align(alignment = Alignment.CenterStart),
-            text = tradingPair.symbol.format(),
+            text = buildAnnotatedString {
+                val formattedPair = tradingPair.symbol.format()
+                append(text = formattedPair.substringBefore(delimiter = "/"))
+                withStyle(
+                    style = MaterialTheme.typography.labelMedium.toSpanStyle()
+                        .copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ) { append(text = "/${formattedPair.substringAfter(delimiter = "/")}") }
+            },
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -337,12 +335,12 @@ private fun TradingPairListItem(
                 },
                 shape = MaterialTheme.shapes.small,
             )
-            .padding(vertical = 4.dp),
+            .padding(all = 4.dp),
     ) {
         Text(
             modifier = Modifier.align(alignment = Alignment.Center),
             text = tradingPair.dailyChangeRelative.dailyChangeFormat(),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = Color.White,
         )
