@@ -2,6 +2,7 @@ package com.swissborg.challenge.data.repository
 
 import app.cash.turbine.test
 import com.swissborg.challenge.data.repository.RemoteTickersRepository.Companion.asQueryParam
+import com.swissborg.challenge.domain.model.TradingPair
 import com.swissborg.challenge.domain.repository.TickersRepository
 import com.swissborg.challenge.util.TestSymbol
 import com.swissborg.challenge.util.TestTradingPair
@@ -39,7 +40,7 @@ class RemoteTickersRepositoryTest {
             assertEquals(
                 expected = expected,
                 actual = actual,
-                message = "Trading pairs are not updated"
+                message = "Trading pairs are not updated",
             )
         }
     }
@@ -49,6 +50,21 @@ class RemoteTickersRepositoryTest {
         assertFailsWith<ClientRequestException>(message = "HttpExceptions are not thrown") {
             RemoteTickersRepository(httpClient = mockClientFailure())
                 .fetchTradingPairs(symbols = emptyList())
+        }
+    }
+
+    @Test
+    fun `when filter applied trading pairs are filtered`() = runTest {
+        val expected = listOf<TradingPair>()
+        repository.tradingPairs.test {
+            skipItems(count = 1)
+            repository.applyFilter(query = "test")
+            val actual = awaitItem()
+            assertEquals(
+                expected = expected,
+                actual = actual,
+                message = "Trading pairs are not filtered",
+            )
         }
     }
 

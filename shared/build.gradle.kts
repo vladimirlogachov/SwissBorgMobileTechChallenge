@@ -36,6 +36,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.material3)
             implementation(compose.components.resources)
+            implementation(compose.materialIconsExtended)
             implementation(libs.bundles.bignum)
             implementation(libs.bundles.ktor.data)
             implementation(libs.bundles.koin.compose)

@@ -10,19 +10,29 @@ class BigDecimalFormatterTest {
     @Test
     fun `validate daily change format`() {
         assertEquals(
-            expected = "3.19%",
+            expected = "+3.19%",
             actual = 0.03186326.toBigDecimal().dailyChangeFormat(),
-            message = "Wrong format, `#.##%` expected",
+            message = "Wrong format, `+#.##%` expected",
         )
         assertEquals(
-            expected = "31.87%",
+            expected = "+31.87%",
             actual = 0.3186326.toBigDecimal().dailyChangeFormat(),
-            message = "Wrong format, `#.##%` expected",
+            message = "Wrong format, `+#.##%` expected",
         )
         assertEquals(
             expected = "0.00%",
             actual = 0.0.toBigDecimal().dailyChangeFormat(),
             message = "Wrong format, `#.##%` expected",
+        )
+        assertEquals(
+            expected = "-3.18%",
+            actual = (-0.03186326).toBigDecimal().dailyChangeFormat(),
+            message = "Wrong format, `+#.##%` expected",
+        )
+        assertEquals(
+            expected = "-31.86%",
+            actual = (-0.3186326).toBigDecimal().dailyChangeFormat(),
+            message = "Wrong format, `+#.##%` expected",
         )
     }
 

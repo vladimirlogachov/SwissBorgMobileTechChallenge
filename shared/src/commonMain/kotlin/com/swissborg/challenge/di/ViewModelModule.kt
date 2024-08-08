@@ -5,5 +5,11 @@ import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 internal val ViewModelModule = module {
-    viewModel { MainViewModel(observeTradingPairs = get(), fetchTradingPairs = get()) }
+    viewModel {
+        MainViewModel(
+            observeTradingPairs = get(),
+            fetchTradingPairs = get(),
+            applyTradingPairsFilter = get(),
+        )
+    }
 }
