@@ -8,7 +8,7 @@
 2) I decided not to split `shared` module onto 3 separate ones just for the sake of simplicity, but
    actually they should be separated to have proper control over dependecies.
 
-3) Connecivity state updates based on native native network monitoring on Android and Apple devices.
+3) Connecivity state updates based on native network monitoring on Android and Apple devices.
    This means that it properly updates state only if both WiFi and Mobile Data disabled. If this
    feature is going to be tested on emulated devices, app won't react and no `Connection lost` banner
    will be displayed.
