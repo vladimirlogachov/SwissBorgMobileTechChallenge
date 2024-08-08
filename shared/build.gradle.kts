@@ -37,14 +37,14 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.components.resources)
             implementation(compose.materialIconsExtended)
-            implementation(libs.bundles.bignum)
+            implementation(libs.bignum)
+            implementation(libs.koin.core)
+            implementation(libs.bundles.connectivity)
             implementation(libs.bundles.ktor.data)
             implementation(libs.bundles.koin.compose)
-            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(libs.bundles.test)
-            implementation(libs.ktor.client.mock)
         }
         iosMain.dependencies {
             api(libs.ktor.client.darwin)

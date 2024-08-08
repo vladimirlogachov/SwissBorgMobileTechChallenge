@@ -3,34 +3,43 @@ package com.swissborg.challenge.presentation.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,11 +48,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -51,12 +64,14 @@ import androidx.lifecycle.LifecycleOwner
 import com.swissborg.challenge.domain.formatter.dailyChangeFormat
 import com.swissborg.challenge.domain.formatter.format
 import com.swissborg.challenge.domain.formatter.lastPriceFormat
+import com.swissborg.challenge.domain.model.ConnectionState
 import com.swissborg.challenge.domain.model.TradingPair
 import com.swissborg.challenge.presentation.theme.DarkGreen
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import swissborgmobiletechchallenge.shared.generated.resources.Res
+import swissborgmobiletechchallenge.shared.generated.resources.connection_lost
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_daily_change
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_last_price
 import swissborgmobiletechchallenge.shared.generated.resources.header_item_name
@@ -66,9 +81,45 @@ import swissborgmobiletechchallenge.shared.generated.resources.search_bar_hint
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-internal fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
-    val tradingPairs by viewModel.tradingPairs.collectAsState(initial = emptyList())
+internal fun MainScreen(
+    viewModel: MainViewModel = koinViewModel(),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    val state by viewModel.state.collectAsState()
+    var showProgress by remember { mutableStateOf(value = false) }
 
+    ScreenContent(
+        onFilter = { query ->
+            MainIntent.FilterTradingPairs(query = query).run(viewModel::submitIntent)
+        },
+        state = state,
+        showProgress = showProgress,
+        snackbarHostState = snackbarHostState,
+    )
+
+    LaunchedEffect(key1 = viewModel) {
+        viewModel.action.collect { action ->
+            when (action) {
+                MainAction.ShowProgress -> showProgress = true
+                MainAction.HideProgress -> showProgress = false
+                is MainAction.ShowError -> snackbarHostState.showSnackbar(message = action.message)
+            }
+        }
+    }
+
+    RefreshDisposableEffect(
+        onStartRefresh = { MainIntent.StartPeriodicRefresh.run(viewModel::submitIntent) },
+        onStopRefresh = { MainIntent.StopPeriodicRefresh.run(viewModel::submitIntent) },
+    )
+}
+
+@Composable
+private fun ScreenContent(
+    onFilter: (String) -> Unit,
+    state: MainState,
+    showProgress: Boolean,
+    snackbarHostState: SnackbarHostState,
+) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -76,27 +127,64 @@ internal fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                onFilter = { query ->
-                    viewModel.intents.trySend(element = MainIntent.FilterTradingPairs(query = query))
-                },
+                onFilter = onFilter,
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .imePadding(),
+                hostState = snackbarHostState,
             )
         },
         contentWindowInsets = WindowInsets.ime,
     ) { paddingValues ->
-        TradingPairsList(
-            modifier = Modifier.padding(paddingValues = paddingValues),
-            tradingPairs = tradingPairs,
-        )
+        Column(modifier = Modifier.padding(paddingValues = paddingValues)) {
+            AnimatedVisibility(visible = state.connectionState is ConnectionState.Disconnected) {
+                ConnectionLost(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            Box(contentAlignment = Alignment.BottomCenter) {
+                Header(modifier = Modifier.fillMaxWidth())
+                if (showProgress) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(height = 1.dp)
+                    )
+                }
+            }
+            TradingPairsList(
+                modifier = Modifier.weight(weight = 1f),
+                tradingPairs = state.tradingPairs,
+            )
+        }
     }
+}
 
-    RefreshDisposableEffect(
-        onStartRefresh = {
-            viewModel.intents.trySend(element = MainIntent.StartPeriodicRefresh)
-        },
-        onStopRefresh = {
-            viewModel.intents.trySend(element = MainIntent.StopPeriodicRefresh)
-        },
-    )
+@Composable
+private fun ConnectionLost(modifier: Modifier = Modifier) = Surface(
+    modifier = modifier.height(intrinsicSize = IntrinsicSize.Min),
+    color = MaterialTheme.colorScheme.errorContainer,
+    shape = MaterialTheme.shapes.medium,
+) {
+    Row(
+        modifier = Modifier
+            .padding(all = 16.dp)
+            .fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(space = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.WifiOff,
+            contentDescription = stringResource(resource = Res.string.connection_lost),
+        )
+        Text(text = stringResource(resource = Res.string.connection_lost))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,17 +193,15 @@ private fun FilterBar(
     onFilter: (String) -> Unit,
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    focusManager: FocusManager = LocalFocusManager.current,
     softwareKeyboardController: SoftwareKeyboardController? = LocalSoftwareKeyboardController.current,
 ) {
     var query by rememberSaveable { mutableStateOf(value = "") }
     SearchBar(
         modifier = modifier,
         query = query,
-        onQueryChange = { q -> query = q; },
-        onSearch = {
-            softwareKeyboardController?.hide()
-            onFilter(query)
-        },
+        onQueryChange = { q -> query = q; onFilter(query) },
+        onSearch = { softwareKeyboardController?.hide(); focusManager.clearFocus() },
         active = false,
         onActiveChange = { /* no need to expand the bar */ },
         placeholder = { Text(text = stringResource(resource = Res.string.search_bar_hint)) },
@@ -144,33 +230,13 @@ private fun FilterBar(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TradingPairsList(
-    tradingPairs: List<TradingPair>,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(all = 16.dp),
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(space = 8.dp),
-) = LazyColumn(
-    modifier = modifier,
-    contentPadding = contentPadding,
-    verticalArrangement = verticalArrangement,
-) {
-    stickyHeader {
-        Header(modifier = Modifier.fillMaxWidth())
-    }
-    items(items = tradingPairs, key = { item -> item.symbol.key }) { tradingPair ->
-        TradingPairListItem(tradingPair = tradingPair)
-    }
-}
-
 @Composable
 private fun Header(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(vertical = 4.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(space = 16.dp),
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
-) = ProvideTextStyle(value = MaterialTheme.typography.labelLarge) {
+) = ProvideTextStyle(value = MaterialTheme.typography.labelMedium) {
     Row(
         modifier = modifier
             .background(color = MaterialTheme.colorScheme.surface)
@@ -200,6 +266,22 @@ private fun Header(
 }
 
 @Composable
+private fun TradingPairsList(
+    tradingPairs: List<TradingPair>,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(space = 8.dp),
+) = LazyColumn(
+    modifier = modifier,
+    contentPadding = contentPadding,
+    verticalArrangement = verticalArrangement,
+) {
+    items(items = tradingPairs, key = { item -> item.symbol.key }) { tradingPair ->
+        TradingPairListItem(tradingPair = tradingPair)
+    }
+}
+
+@Composable
 private fun TradingPairListItem(
     tradingPair: TradingPair,
     modifier: Modifier = Modifier,
@@ -214,7 +296,14 @@ private fun TradingPairListItem(
     Box(modifier = Modifier.weight(weight = 2f)) {
         Text(
             modifier = Modifier.align(alignment = Alignment.CenterStart),
-            text = tradingPair.symbol.format(),
+            text = buildAnnotatedString {
+                val formattedPair = tradingPair.symbol.format()
+                append(text = formattedPair.substringBefore(delimiter = "/"))
+                withStyle(
+                    style = MaterialTheme.typography.labelMedium.toSpanStyle()
+                        .copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ) { append(text = "/${formattedPair.substringAfter(delimiter = "/")}") }
+            },
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -246,12 +335,12 @@ private fun TradingPairListItem(
                 },
                 shape = MaterialTheme.shapes.small,
             )
-            .padding(vertical = 4.dp),
+            .padding(all = 4.dp),
     ) {
         Text(
             modifier = Modifier.align(alignment = Alignment.Center),
             text = tradingPair.dailyChangeRelative.dailyChangeFormat(),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = Color.White,
         )
