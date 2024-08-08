@@ -10,4 +10,6 @@ internal interface TickersRepository {
 
     suspend fun fetchTradingPairs(symbols: List<Symbol>)
 
+    suspend fun applyFilter(query: String)
+
 }

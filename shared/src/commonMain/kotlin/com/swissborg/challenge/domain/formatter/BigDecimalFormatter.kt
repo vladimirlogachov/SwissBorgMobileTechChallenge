@@ -8,10 +8,15 @@ import com.swissborg.challenge.domain.model.Currency
 private val HUNDRED = 100.toBigDecimal()
 
 internal fun BigDecimal.dailyChangeFormat(roundingMode: RoundingMode = RoundingMode.CEILING): String =
-    if (signum() == 0) "0.00%"
-    else multiply(other = HUNDRED)
+    multiply(other = HUNDRED)
         .roundToDigitPositionAfterDecimalPoint(digitPosition = 2, roundingMode = roundingMode)
-        .toStringExpanded() + "%"
+        .run {
+            when (signum()) {
+                1 -> "+${toStringExpanded()}"
+                -1 -> toStringExpanded()
+                else -> "0.00"
+            } + "%"
+        }
 
 internal fun BigDecimal.lastPriceFormat(currency: Currency = Currency.USD): String =
     "${currency.symbol}${toStringExpanded()}"
