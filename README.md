@@ -10,7 +10,7 @@
 
 3) Connecivity state updates based on native network monitoring on Android and Apple devices.
    This means that it properly updates state only if both WiFi and Mobile Data disabled. If this
-   feature is going to be tested on emulated devices, app won't react and no `Connection lost` banner
+   feature is going to be tested on emulated devices, by disabling laptop WiFi, app won't react and no `Connection lost` banner
    will be displayed. Yeah probably I should've periodically ping some endpoints instead, as this way
    we can be 100% sure that connection lost even if both or one of WiFi and Mobile Data enabled, but
    decided not to, probably that was a mistake.
