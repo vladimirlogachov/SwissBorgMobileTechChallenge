@@ -90,7 +90,7 @@ internal fun MainScreen(
 
     ScreenContent(
         onFilter = { query ->
-            MainIntent.FilterTradingPairs(query = query).run(viewModel::submitIntent)
+            viewModel.submitIntent(intent = MainIntent.FilterTradingPairs(query = query))
         },
         state = state,
         showProgress = showProgress,
@@ -108,8 +108,8 @@ internal fun MainScreen(
     }
 
     RefreshDisposableEffect(
-        onStartRefresh = { MainIntent.StartPeriodicRefresh.run(viewModel::submitIntent) },
-        onStopRefresh = { MainIntent.StopPeriodicRefresh.run(viewModel::submitIntent) },
+        onStartRefresh = { viewModel.submitIntent(intent = MainIntent.StartPeriodicRefresh) },
+        onStopRefresh = { viewModel.submitIntent(intent = MainIntent.StopPeriodicRefresh) },
     )
 }
 
@@ -226,7 +226,7 @@ private fun FilterBar(
             }
         },
         interactionSource = interactionSource,
-        content = {}
+        content = { /* no need to show the content of the bar */ }
     )
 }
 

@@ -27,17 +27,20 @@ internal class MainViewModel(
 
     private val _intent = Channel<MainIntent>(capacity = Channel.UNLIMITED)
     private val _action = Channel<MainAction>(capacity = Channel.BUFFERED)
-    private val _tradingPairs = observeTradingPairs()
-    private val _connectionState = observeConnectionState()
     private var refreshJob: Job? = null
 
     val action = _action.receiveAsFlow()
-    val state = combine(_tradingPairs, _connectionState) { tradingPairs, connectionState ->
-        when (connectionState) {
-            ConnectionState.Connected -> startPeriodicRefresh()
-            ConnectionState.Disconnected -> stopPeriodicRefresh()
-        }
+    val state = combine(
+        observeTradingPairs(),
+        observeConnectionState(),
+    ) { tradingPairs, connectionState ->
         MainState(tradingPairs = tradingPairs, connectionState = connectionState)
+            .also { state ->
+                when (state.connectionState) {
+                    ConnectionState.Connected -> startPeriodicRefresh()
+                    ConnectionState.Disconnected -> stopPeriodicRefresh()
+                }
+            }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(),
@@ -49,7 +52,7 @@ internal class MainViewModel(
     }
 
     fun submitIntent(intent: MainIntent) {
-        this._intent.trySend(element = intent)
+        _intent.trySend(element = intent)
     }
 
     private fun collectUserIntents() = viewModelScope.launch {
@@ -68,15 +71,14 @@ internal class MainViewModel(
 
     private fun fetchData() = viewModelScope.launch {
         while (true) {
-            MainAction.ShowProgress.run(_action::trySend)
+            _action.trySend(element = MainAction.ShowProgress)
             fetchTradingPairs().onFailure { error ->
-                error.printStackTrace()
                 if (error !is CancellationException) {
                     MainAction.ShowError(message = error.message ?: "Unknown error")
-                        .run(_action::trySend)
+                        .run(block = _action::trySend)
                 }
             }
-            MainAction.HideProgress.run(_action::trySend)
+            _action.trySend(element = MainAction.HideProgress)
             delay(timeMillis = REFRESH_INTERVAL)
         }
     }
